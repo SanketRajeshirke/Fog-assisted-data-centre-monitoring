@@ -47,9 +47,9 @@ def batch_data(data):
 import boto3
 import json
 
-sqs = boto3.client("sqs", region_name="eu-west-1")
+sqs = boto3.client("sqs", region_name="us-east-1")
 
-QUEUE_URL = "https://sqs.eu-west-1.amazonaws.com/348256052600/fog-sensor-queue"
+QUEUE_URL = "https://sqs.us-east-1.amazonaws.com/348256052600/fog-sensor-queue"
 def send_to_cloud(batch):
     print("\n☁️ Sending batch to AWS SQS")
 
