@@ -1,0 +1,17 @@
+temperature:
+  frequency: 2
+  anomaly_rate: 0.05
+
+humidity:
+  frequency: 3
+
+power:
+  frequency: 2
+  anomaly_rate: 0.03
+
+smoke:
+  frequency: 5
+  anomaly_rate: 0.02
+
+door:
+  frequency: 4
