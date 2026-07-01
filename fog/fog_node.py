@@ -44,10 +44,21 @@ def batch_data(data):
     return None
 
 
-def send_to_cloud(batch):
-    print("\n☁️ Sending batch to cloud backend:")
-    print(json.dumps(batch, indent=2))
+import boto3
+import json
 
+sqs = boto3.client("sqs", region_name="eu-west-1")
+
+QUEUE_URL = "https://sqs.eu-west-1.amazonaws.com/348256052600/fog-sensor-queue"
+def send_to_cloud(batch):
+    print("\n☁️ Sending batch to AWS SQS")
+
+    sqs.send_message(
+        QueueUrl=QUEUE_URL,
+        MessageBody=json.dumps(batch)
+    )
+
+    print("✅ Sent to SQS successfully")
 
 # -------------------------
 # SIMULATED INPUT STREAM
