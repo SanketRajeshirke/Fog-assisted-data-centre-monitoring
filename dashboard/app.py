@@ -26,21 +26,23 @@ def get_sensors():
 
     try:
 
-        response = table.scan(
-            Limit=50
-        )
+        response = table.scan()
 
         sensors = response.get("Items", [])
 
 
-        # Sort by timestamp
+        # Sort newest first
         sensors.sort(
             key=lambda x: x.get("timestamp", ""),
             reverse=True
         )
 
 
-        return jsonify(sensors[:50])
+        # Take latest 100 records
+        latest = sensors[:100]
+
+
+        return jsonify(latest)
 
 
     except Exception as e:
@@ -48,7 +50,6 @@ def get_sensors():
         return jsonify({
             "error": str(e)
         }), 500
-
 
 
 
