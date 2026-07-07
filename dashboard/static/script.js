@@ -1,70 +1,97 @@
-fetch("/api/sensors")
-.then(response => response.json())
-.then(data => {
+Xfunction loadSensors() {
+
+    fetch("/api/sensors")
+    .then(response => response.json())
+    .then(data => {
 
 
-let sensorTable =
-document.getElementById("sensorTable");
+        let sensorTable =
+        document.getElementById("sensorTable");
 
 
-let alertTable =
-document.getElementById("alertTable");
+        let alertTable =
+        document.getElementById("alertTable");
 
 
-let alerts = 0;
+        // Clear old data before refreshing
+        sensorTable.innerHTML = "";
+        alertTable.innerHTML = "";
 
 
-document.getElementById("totalSensors").innerHTML = data.length;
+        let alerts = 0;
 
 
-
-data.forEach(sensor => {
-
-
-let row = `
-
-<tr>
-<td>${sensor.sensor_id}</td>
-<td>${sensor.type}</td>
-<td>${sensor.value}</td>
-<td>${sensor.anomaly}</td>
-<td>${sensor.processed_by}</td>
-</tr>
-
-`;
-
-sensorTable.innerHTML += row;
+        document.getElementById("totalSensors").innerHTML = data.length;
 
 
 
-if(sensor.anomaly == true){
+        data.forEach(sensor => {
 
 
-alerts++;
+            let row = `
+
+            <tr>
+            <td>${sensor.sensor_id}</td>
+            <td>${sensor.type}</td>
+            <td>${sensor.value}</td>
+            <td>${sensor.anomaly}</td>
+            <td>${sensor.processed_by}</td>
+            </tr>
+
+            `;
 
 
-let alertRow = `
-
-<tr>
-<td>${sensor.sensor_id}</td>
-<td>${sensor.type}</td>
-<td>${sensor.value}</td>
-<td>🚨 ALERT</td>
-</tr>
-
-`;
+            sensorTable.innerHTML += row;
 
 
-alertTable.innerHTML += alertRow;
+
+            if(sensor.anomaly === true){
+
+
+                alerts++;
+
+
+                let alertRow = `
+
+                <tr>
+                <td>${sensor.sensor_id}</td>
+                <td>${sensor.type}</td>
+                <td>${sensor.value}</td>
+                <td>🚨 ALERT</td>
+                </tr>
+
+                `;
+
+
+                alertTable.innerHTML += alertRow;
+
+            }
+
+
+        });
+
+
+        document.getElementById("totalAlerts").innerHTML = alerts;
+
+
+    })
+
+    .catch(error => {
+
+        console.error(
+            "Error loading sensor data:",
+            error
+        );
+
+    });
 
 
 }
 
 
-});
+// Initial dashboard load
+loadSensors();
 
 
-document.getElementById("totalAlerts").innerHTML = alerts;
-
-
-});
+// Refresh every 5 seconds
+setInterval(loadSensors, 5000);
