@@ -5,105 +5,248 @@ let humidityChart;
 
 function loadSensors() {
 
-    console.log("Loading sensor data...");
 
-    fetch("/api/sensors")
-
-        .then(response => response.json())
-
-        .then(data => {
-
-            console.log("Received data:", data);
+fetch("/api/sensors")
 
 
-            let sensorTable = document.getElementById("sensorTable");
-            let alertTable = document.getElementById("alertTable");
+.then(response => response.json())
 
 
-            sensorTable.innerHTML = "";
-            alertTable.innerHTML = "";
+.then(data => {
 
 
-            let alerts = 0;
-
-
-            document.getElementById("totalSensors").innerHTML = data.length;
+console.log("API DATA:", data);
 
 
 
-            data.forEach(sensor => {
-
-
-                console.log("Processing:", sensor);
-
-
-                // Sensor table
-
-                let row = `
-                    <tr>
-                        <td>${sensor.sensor_id}</td>
-                        <td>${sensor.type}</td>
-                        <td>${sensor.value}</td>
-                        <td>
-                            ${sensor.anomaly ? "🚨 TRUE" : "NORMAL"}
-                        </td>
-                        <td>${sensor.processed_by}</td>
-                    </tr>
-                `;
-
-
-                sensorTable.innerHTML += row;
+const sensorTable = document.getElementById("sensorTable");
+const alertTable = document.getElementById("alertTable");
 
 
 
-                // Alert table
-
-                if(sensor.anomaly === true || sensor.anomaly === "true") {
-
-
-                    alerts++;
-
-
-                    let alertRow = `
-                        <tr>
-                            <td>${sensor.sensor_id}</td>
-                            <td>${sensor.type}</td>
-                            <td>${sensor.value}</td>
-                            <td>🚨 ALERT</td>
-                        </tr>
-                    `;
-
-
-                    alertTable.innerHTML += alertRow;
-
-                }
-
-
-            });
+if(!sensorTable || !alertTable){
+    console.error("Table elements missing");
+    return;
+}
 
 
 
-            document.getElementById("totalAlerts").innerHTML = alerts;
+sensorTable.innerHTML = "";
+alertTable.innerHTML = "";
 
 
 
-            createCharts(data);
+let activeAlerts = 0;
+let criticalAlerts = 0;
+let warningAlerts = 0;
+
+let currentPower = 0;
 
 
-        })
 
 
-        .catch(error => {
+const totalSensors =
+document.getElementById("totalSensors");
 
-            console.error(
-                "Error loading sensor data:",
-                error
-            );
+if(totalSensors){
+    totalSensors.innerHTML = data.length;
+}
 
-        });
+
+
+
+
+data.forEach(sensor => {
+
+
+
+let severity = "NORMAL";
+
+
+
+let value = sensor.value;
+
+
+// convert numeric strings to numbers
+
+let numericValue = Number(value);
+
+
+
+if(sensor.anomaly === true || sensor.anomaly === "true"){
+
+
+activeAlerts++;
+
+severity="WARNING";
+
+
+
+if(
+sensor.type === "smoke" ||
+sensor.type === "door"
+){
+
+severity="CRITICAL";
+
+criticalAlerts++;
 
 
 }
+else{
+
+warningAlerts++;
+
+}
+
+
+
+let alertRow = `
+
+<tr>
+
+<td>${sensor.sensor_id}</td>
+
+<td>${sensor.type}</td>
+
+<td>${sensor.value}</td>
+
+<td>${severity}</td>
+
+<td>OPEN</td>
+
+</tr>
+
+`;
+
+
+alertTable.innerHTML += alertRow;
+
+
+}
+
+
+
+
+
+if(
+sensor.type === "power" &&
+!isNaN(numericValue)
+){
+
+currentPower = numericValue;
+
+}
+
+
+
+
+
+let row = `
+
+
+<tr>
+
+<td>${sensor.sensor_id}</td>
+
+<td>${sensor.type}</td>
+
+<td>${sensor.value}</td>
+
+<td>${sensor.anomaly}</td>
+
+<td>${severity}</td>
+
+<td>${sensor.processed_by}</td>
+
+
+</tr>
+
+
+`;
+
+
+
+sensorTable.innerHTML += row;
+
+
+
+});
+
+
+
+
+
+
+updateCard(
+"totalAlerts",
+activeAlerts
+);
+
+
+updateCard(
+"criticalAlerts",
+criticalAlerts
+);
+
+
+
+updateCard(
+"warningAlerts",
+warningAlerts
+);
+
+
+
+updateCard(
+"currentPower",
+currentPower + " W"
+);
+
+
+
+
+createCharts(data);
+
+
+
+})
+
+
+.catch(error=>{
+
+console.error(
+"Dashboard Error:",
+error
+);
+
+});
+
+
+}
+
+
+
+
+
+
+
+function updateCard(id,value){
+
+let element =
+document.getElementById(id);
+
+
+if(element){
+
+element.innerHTML=value;
+
+}
+
+}
+
+
+
 
 
 
@@ -113,203 +256,242 @@ function loadSensors() {
 function createCharts(data){
 
 
-    let powerLabels = [];
-    let powerValues = [];
+let powerLabels=[];
+let powerValues=[];
 
-    let tempLabels = [];
-    let tempValues = [];
 
-    let humidityLabels = [];
-    let humidityValues = [];
+let tempLabels=[];
+let tempValues=[];
 
 
+let humidityLabels=[];
+let humidityValues=[];
 
-    data.forEach(sensor => {
 
 
 
-        let value = Number(sensor.value);
 
+data.forEach(sensor=>{
 
 
-        if(sensor.type === "power"){
+let value = Number(sensor.value);
 
-            powerLabels.push(sensor.timestamp);
-            powerValues.push(value);
 
-        }
 
+if(
+sensor.type==="power" &&
+!isNaN(value)
+){
 
+powerLabels.push(sensor.timestamp);
 
-        if(sensor.type === "temperature"){
+powerValues.push(value);
 
-            tempLabels.push(sensor.timestamp);
-            tempValues.push(value);
 
-        }
+}
 
 
 
-        if(sensor.type === "humidity"){
 
-            humidityLabels.push(sensor.timestamp);
-            humidityValues.push(value);
+if(
+sensor.type==="temperature" &&
+!isNaN(value)
+){
 
-        }
+tempLabels.push(sensor.timestamp);
 
+tempValues.push(value);
 
-    });
 
+}
 
 
 
 
-    // Destroy old charts
+if(
+sensor.type==="humidity" &&
+!isNaN(value)
+){
 
+humidityLabels.push(sensor.timestamp);
 
-    if(powerChart){
-        powerChart.destroy();
-    }
+humidityValues.push(value);
 
 
-    if(temperatureChart){
-        temperatureChart.destroy();
-    }
+}
 
 
-    if(humidityChart){
-        humidityChart.destroy();
-    }
 
+});
 
 
 
 
 
-    // Temperature chart
+console.log(
+"Power chart data:",
+powerValues
+);
 
 
-    let tempCanvas = document.getElementById("temperatureChart");
+console.log(
+"Temperature chart data:",
+tempValues
+);
 
 
-    if(tempCanvas && tempValues.length > 0){
+console.log(
+"Humidity chart data:",
+humidityValues
+);
 
 
-        temperatureChart = new Chart(
-            tempCanvas,
-            {
 
-                type:"line",
 
-                data:{
 
-                    labels:tempLabels,
 
-                    datasets:[{
 
-                        label:"Temperature °C",
+if(powerChart){
 
-                        data:tempValues,
+powerChart.destroy();
 
-                        tension:0.3
+}
 
-                    }]
 
-                }
 
-            }
+let powerCanvas =
+document.getElementById("powerChart");
 
-        );
 
-    }
+if(powerCanvas){
 
 
+powerChart = new Chart(
+powerCanvas,
+{
 
+type:"line",
 
+data:{
 
+labels:powerLabels,
 
-    // Power chart
 
+datasets:[{
 
-    let powerCanvas = document.getElementById("powerChart");
+label:"Power Consumption (W)",
 
+data:powerValues
 
-    if(powerCanvas && powerValues.length > 0){
+}]
 
 
-        powerChart = new Chart(
+}
 
-            powerCanvas,
+});
 
-            {
 
-                type:"line",
+}
 
-                data:{
 
-                    labels:powerLabels,
 
-                    datasets:[{
 
-                        label:"Power Consumption W",
 
-                        data:powerValues,
 
-                        tension:0.3
 
-                    }]
 
-                }
 
-            }
+if(temperatureChart){
 
-        );
+temperatureChart.destroy();
 
-    }
+}
 
 
 
+let tempCanvas =
+document.getElementById("temperatureChart");
 
 
+if(tempCanvas){
 
-    // Humidity chart
 
+temperatureChart = new Chart(
+tempCanvas,
+{
 
-    let humidityCanvas = document.getElementById("humidityChart");
+type:"line",
 
+data:{
 
-    if(humidityCanvas && humidityValues.length > 0){
+labels:tempLabels,
 
 
-        humidityChart = new Chart(
+datasets:[{
 
-            humidityCanvas,
+label:"Temperature °C",
 
-            {
+data:tempValues
 
-                type:"line",
+}]
 
-                data:{
 
-                    labels:humidityLabels,
+}
 
-                    datasets:[{
+});
 
-                        label:"Humidity %",
 
-                        data:humidityValues,
+}
 
-                        tension:0.3
 
-                    }]
 
-                }
 
-            }
 
-        );
 
-    }
+
+
+
+if(humidityChart){
+
+humidityChart.destroy();
+
+}
+
+
+
+let humidityCanvas =
+document.getElementById("humidityChart");
+
+
+if(humidityCanvas){
+
+
+humidityChart = new Chart(
+humidityCanvas,
+{
+
+type:"line",
+
+data:{
+
+labels:humidityLabels,
+
+
+datasets:[{
+
+label:"Humidity %",
+
+data:humidityValues
+
+}]
+
+
+}
+
+});
+
+
+}
 
 
 
@@ -320,11 +502,12 @@ function createCharts(data){
 
 
 
-// Initial load
 
 loadSensors();
 
 
 
-// Refresh every 5 seconds
-setInterval(loadSensors,10000);
+setInterval(
+loadSensors,
+10000
+);

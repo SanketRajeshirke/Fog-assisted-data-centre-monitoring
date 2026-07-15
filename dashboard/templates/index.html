@@ -2,7 +2,8 @@
 <html>
 
 <head>
-    <title>Fog IoT Monitoring Dashboard</title>
+
+    <title>Fog Assisted Data Centre Monitoring</title>
 
     <link rel="stylesheet" href="/static/style.css">
 
@@ -16,26 +17,37 @@
 
 
 
+
+<!-- ================= KPI SUMMARY ================= -->
+
+<h2>📊 System Overview</h2>
+
+
 <div class="cards">
 
 
-    <div class="card">
-
-        <h3>Total Sensors</h3>
-
-        <p id="totalSensors">0</p>
-
-    </div>
+<div class="card">
+<h3>Total Records</h3>
+<p id="totalRecords">0</p>
+</div>
 
 
+<div class="card alert">
+<h3>Active Alerts</h3>
+<p id="activeAlerts">0</p>
+</div>
 
-    <div class="card alert">
 
-        <h3>Active Alerts</h3>
+<div class="card alert">
+<h3>Critical Alerts</h3>
+<p id="criticalAlerts">0</p>
+</div>
 
-        <p id="totalAlerts">0</p>
 
-    </div>
+<div class="card">
+<h3>⚡ Current Power</h3>
+<p id="currentPower">0 W</p>
+</div>
 
 
 </div>
@@ -44,7 +56,12 @@
 
 
 
-<h2>🚨 Anomaly Alerts</h2>
+
+
+<!-- ================= ALERT MANAGEMENT ================= -->
+
+
+<h2>🚨 Business Alert Management</h2>
 
 
 <table>
@@ -60,13 +77,15 @@
 
 <th>Value</th>
 
-<th>Status</th>
+<th>Severity</th>
+
+<th>Timestamp</th>
+
 
 </tr>
 
 
 </thead>
-
 
 
 <tbody id="alertTable">
@@ -82,14 +101,19 @@
 
 
 
-<h2>📡 Sensor Data</h2>
 
+
+<!-- ================= LIVE SENSOR DATA ================= -->
+
+
+<h2>📡 Live Sensor Monitoring</h2>
 
 
 <table>
 
 
 <thead>
+
 
 <tr>
 
@@ -103,6 +127,8 @@
 
 <th>Processed By</th>
 
+<th>Timestamp</th>
+
 
 </tr>
 
@@ -110,12 +136,10 @@
 </thead>
 
 
-
 <tbody id="sensorTable">
 
 
 </tbody>
-
 
 
 </table>
@@ -125,28 +149,33 @@
 
 
 
-<h2>📊 Sensor Analytics</h2>
+
+
+<!-- ================= ANALYTICS ================= -->
+
+
+<h2>📈 Sensor Analytics</h2>
 
 
 
-<div class="charts">
+<div class="chart-container">
 
 
-    <h3>⚡ Power Consumption</h3>
+<h3>⚡ Power Consumption</h3>
 
-    <canvas id="powerChart"></canvas>
-
-
-
-    <h3>🌡 Temperature Monitoring</h3>
-
-    <canvas id="temperatureChart"></canvas>
+<canvas id="powerChart"></canvas>
 
 
 
-    <h3>💧 Humidity Monitoring</h3>
+<h3>🌡 Temperature Monitoring</h3>
 
-    <canvas id="humidityChart"></canvas>
+<canvas id="temperatureChart"></canvas>
+
+
+
+<h3>💧 Humidity Monitoring</h3>
+
+<canvas id="humidityChart"></canvas>
 
 
 </div>
@@ -155,15 +184,17 @@
 
 
 
-<!-- Chart Library -->
+
+
+
+<!-- Chart.js -->
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 
-
 <!-- Dashboard Logic -->
 
-<script src="/static/script.js"></script>
+<script src="/static/script.js?v=final"></script>
 
 
 
