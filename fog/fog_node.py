@@ -21,16 +21,42 @@ def detect_anomaly(data):
 
 
 def process_data(data):
+
     enriched = data.copy()
 
+
+   
     enriched["processed_by"] = "fog_node"
+
+
+  
     enriched["processed_time"] = datetime.utcnow().isoformat()
 
-    # mark anomaly
-    enriched["anomaly"] = detect_anomaly(data)
+
+   
+    anomaly_status = detect_anomaly(data)
+
+    enriched["anomaly"] = anomaly_status
+
+
+
+
+    if anomaly_status:
+
+        enriched["fog_action"] = "alert_generated"
+
+    else:
+
+        enriched["fog_action"] = "normal_forward"
+
+
+
+    
+    enriched["fog_status"] = "processed"
+
+
 
     return enriched
-
 
 def batch_data(data):
     buffer.append(data)

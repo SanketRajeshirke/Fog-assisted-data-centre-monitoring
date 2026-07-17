@@ -1,17 +1,24 @@
 temperature:
   frequency: 2
   anomaly_rate: 0.05
+  dispatch_rate: 5
 
 humidity:
   frequency: 3
+  anomaly_rate: 0.02
+  dispatch_rate: 5
 
 power:
   frequency: 2
   anomaly_rate: 0.03
+  dispatch_rate: 5
 
 smoke:
   frequency: 5
   anomaly_rate: 0.02
+  dispatch_rate: 5
 
 door:
   frequency: 4
+  anomaly_rate: 0.05
+  dispatch_rate: 5

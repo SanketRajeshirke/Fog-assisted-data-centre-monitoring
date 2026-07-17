@@ -2,68 +2,326 @@ import json
 import boto3
 from decimal import Decimal
 
-dynamodb = boto3.resource("dynamodb")
+
+# ==========================
+# AWS CLIENTS
+# ==========================
+
+dynamodb = boto3.resource(
+    "dynamodb",
+    region_name="us-east-1"
+)
+
+
+sns = boto3.client(
+    "sns",
+    region_name="us-east-1"
+)
+
 
 table = dynamodb.Table("SensorData")
 
 
+# SNS Topic ARN
+
+SNS_TOPIC_ARN = "arn:aws:sns:us-east-1:348256052600:fire-alert"
+
+
+
+# ==========================
+# SEND CLOUD ALERT
+# ==========================
+
+def send_alert(sensor, severity):
+
+    message = f"""
+
+🚨 DATA CENTRE {severity} ALERT 🚨
+
+
+Sensor ID:
+{sensor['sensor_id']}
+
+
+Sensor Type:
+{sensor['type']}
+
+
+Detected Value:
+{sensor['value']}
+
+
+Severity:
+{severity}
+
+
+Timestamp:
+{sensor['timestamp']}
+
+
+
+Recommended Action:
+
+Please inspect the data centre infrastructure immediately.
+
+
+"""
+
+
+    sns.publish(
+
+        TopicArn=SNS_TOPIC_ARN,
+
+        Subject=f"Data Centre {severity} Alert",
+
+        Message=message
+
+    )
+
+
+    print("SNS notification sent")
+
+
+
+
+
+# ==========================
+# BUSINESS RULE ENGINE
+# ==========================
+
+def classify_severity(item):
+
+
+    sensor_type = item["type"]
+
+    value = item["value"]
+
+
+    severity = "NORMAL"
+
+
+
+    # --------------------------
+    # Fire detection
+    # --------------------------
+
+    if sensor_type == "smoke" and value == "ALERT":
+
+        severity = "CRITICAL"
+
+
+
+    # --------------------------
+    # Security monitoring
+    # --------------------------
+
+    elif sensor_type == "door" and value == "OPEN":
+
+        severity = "CRITICAL"
+
+
+
+    # --------------------------
+    # Temperature monitoring
+    # --------------------------
+
+    elif sensor_type == "temperature":
+
+
+        temperature = float(value)
+
+
+        if temperature > 60:
+
+            severity = "CRITICAL"
+
+
+        elif temperature > 50:
+
+            severity = "WARNING"
+
+
+
+
+    # --------------------------
+    # Energy monitoring
+    # --------------------------
+
+    elif sensor_type == "power":
+
+
+        power = float(value)
+
+
+        if power > 3500:
+
+            severity = "WARNING"
+
+
+
+    return severity
+
+
+
+
+
+# ==========================
+# LAMBDA ENTRY POINT
+# ==========================
+
 def lambda_handler(event, context):
 
-    print("Received event:", event)
+
+    print("Received event:")
+
+    print(event)
+
+
 
     processed = []
 
+
+
+    # Messages received from SQS
+
     for record in event["Records"]:
+
+
 
         body = json.loads(record["body"])
 
-        # batch received from SQS
+
+
+        # Batch from fog node
+
         for item in body:
+
+
 
             value = item["value"]
 
+
+
             # DynamoDB does not support float
+
             if isinstance(value, float):
+
                 value = Decimal(str(value))
+
+
+
+
+            # Determine business severity
+
+            severity = classify_severity(item)
+
+
 
 
             enriched = {
 
-                "sensor_id": item["sensor_id"],
 
-                "type": item["type"],
+                "sensor_id":
+                    item["sensor_id"],
 
-                "value": value,
 
-                "timestamp": item["timestamp"],
 
-                "processed_by": "lambda",
+                "type":
+                    item["type"],
 
-                "anomaly": item.get("anomaly", False)
+
+
+                "value":
+                    value,
+
+
+
+                "timestamp":
+                    item["timestamp"],
+
+
+
+                "processed_by":
+                    "lambda",
+
+
+
+                "anomaly":
+                    item.get("anomaly", False),
+
+
+
+                "severity":
+                    severity
 
             }
 
 
+
+
             processed.append(enriched)
 
-            print("Processed:", enriched)
 
 
+            print("Processed:")
+
+            print(enriched)
+
+
+
+
+            # ==========================
             # Store in DynamoDB
+            # ==========================
+
             table.put_item(
+
                 Item=enriched
+
             )
+
+
+
+
+
+            # ==========================
+            # Critical Business Alert
+            # ==========================
+
+            if severity == "CRITICAL":
+
+
+                send_alert(
+
+                    enriched,
+
+                    severity
+
+                )
+
+
+
+
 
 
     return {
 
+
         "statusCode": 200,
+
 
         "body": json.dumps({
 
-            "message": "Data processed successfully",
 
-            "count": len(processed)
+            "message":
+                "Sensor data processed successfully",
+
+
+
+            "processed_records":
+                len(processed)
+
+
 
         })
 
