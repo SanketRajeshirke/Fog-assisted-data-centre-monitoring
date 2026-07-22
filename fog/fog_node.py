@@ -1,26 +1,29 @@
 import json
-import boto3
+import paho.mqtt.client as mqtt
+
 from datetime import datetime
-from flask import Flask, request, jsonify
 
 
-app = Flask(__name__)
-
+# -------------------------
+# THRESHOLDS
+# -------------------------
 
 TEMP_THRESHOLD = 50
+
 POWER_THRESHOLD = 3000
 
-buffer = []
 
 
-# AWS SQS
-sqs = boto3.client(
-    "sqs",
-    region_name="us-east-1"
-)
+# -------------------------
+# MQTT CONFIG
+# -------------------------
 
+MQTT_BROKER="localhost"
 
-QUEUE_URL = "https://sqs.us-east-1.amazonaws.com/348256052600/fog-sensor-queue"
+MQTT_PORT=1883
+
+MQTT_TOPIC="sensors/data"
+
 
 
 
@@ -28,21 +31,36 @@ QUEUE_URL = "https://sqs.us-east-1.amazonaws.com/348256052600/fog-sensor-queue"
 # ANOMALY DETECTION
 # -------------------------
 
+
 def detect_anomaly(data):
 
-    if data["type"] == "temperature" and data["value"] > TEMP_THRESHOLD:
+
+    if data["type"]=="temperature" and data["value"] > TEMP_THRESHOLD:
+
         return True
 
-    if data["type"] == "power" and data["value"] > POWER_THRESHOLD:
+
+
+    if data["type"]=="power" and data["value"] > POWER_THRESHOLD:
+
         return True
 
-    if data["type"] == "smoke" and data["value"] == "ALERT":
+
+
+    if data["type"]=="smoke" and data["value"]=="ALERT":
+
         return True
 
-    if data["type"] == "door" and data["value"] == "OPEN":
+
+
+    if data["type"]=="door" and data["value"]=="OPEN":
+
         return True
+
+
 
     return False
+
 
 
 
@@ -50,115 +68,100 @@ def detect_anomaly(data):
 # FOG PROCESSING
 # -------------------------
 
+
 def process_data(data):
 
-    enriched = data.copy()
+
+    enriched=data.copy()
 
 
-    enriched["processed_by"] = "fog_node"
 
-    enriched["processed_time"] = datetime.utcnow().isoformat()
+    enriched["processed_by"]="fog_node"
 
 
-    anomaly = detect_anomaly(data)
+    enriched["processed_time"]=datetime.utcnow().isoformat()
 
-    enriched["anomaly"] = anomaly
+
+
+    anomaly=detect_anomaly(data)
+
+
+
+    enriched["anomaly"]=anomaly
+
 
 
     if anomaly:
-        enriched["fog_action"] = "alert_generated"
+
+
+        enriched["fog_action"]="alert_generated"
+
+
     else:
-        enriched["fog_action"] = "normal_forward"
+
+        enriched["fog_action"]="normal_forward"
 
 
-    enriched["fog_status"] = "processed"
+
+    enriched["fog_status"]="processed"
+
 
 
     return enriched
 
 
 
-# -------------------------
-# BATCHING
-# -------------------------
-
-def batch_data(data):
-
-    buffer.append(data)
-
-
-    if len(buffer) >= 5:
-
-        batch = buffer.copy()
-
-        buffer.clear()
-
-        return batch
-
-
-    return None
-
-
 
 # -------------------------
-# SEND TO CLOUD
+# AWS IoT CORE PLACEHOLDER
 # -------------------------
 
-def send_to_cloud(batch):
 
-    print("\n☁ Sending batch to AWS SQS")
+def send_to_iot_core(data):
 
 
-    sqs.send_message(
+    print(
+        "Sending to AWS IoT Core:"
+    )
 
-        QueueUrl=QUEUE_URL,
+    print(data)
 
-        MessageBody=json.dumps(batch)
 
+    # later replace this
+    # with AWS IoT MQTT publish
+
+
+
+# -------------------------
+# MQTT CALLBACK
+# -------------------------
+
+
+def on_message(client,userdata,msg):
+
+
+    data=json.loads(
+        msg.payload.decode()
     )
 
 
-    print("✅ Batch sent successfully")
-
-
-
-# -------------------------
-# SENSOR API
-# -------------------------
-
-@app.route("/sensor", methods=["POST"])
-def receive_sensor_data():
-
-    data = request.json
-
-
-    print("\n📥 Received sensor:")
+    print(
+        "\nReceived sensor:"
+    )
 
     print(data)
 
 
 
-    processed = process_data(data)
+    processed=process_data(data)
 
 
 
-    batch = batch_data(processed)
+    send_to_iot_core(
+        processed
+    )
 
 
-
-    if batch:
-
-        send_to_cloud(batch)
-
-
-
-    return jsonify({
-
-        "status": "processed",
-
-        "anomaly": processed["anomaly"]
-
-    })
 
 
 
@@ -166,15 +169,31 @@ def receive_sensor_data():
 # START FOG NODE
 # -------------------------
 
-if __name__ == "__main__":
 
-    print("Fog node started. Waiting for sensor data...")
+client=mqtt.Client()
 
 
-    app.run(
+client.on_message=on_message
 
-        host="0.0.0.0",
 
-        port=5000
 
-    )
+client.connect(
+    MQTT_BROKER,
+    MQTT_PORT
+)
+
+
+
+client.subscribe(
+    MQTT_TOPIC
+)
+
+
+
+print(
+    "Fog node waiting for MQTT data..."
+)
+
+
+
+client.loop_forever()
