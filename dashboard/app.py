@@ -1,64 +1,64 @@
 from flask import Flask, jsonify, render_template
 import boto3
-from collections import Counter
 
 
 app = Flask(__name__)
 
 
-# DynamoDB
+# DynamoDB connection
 
 dynamodb = boto3.resource(
     "dynamodb",
     region_name="us-east-1"
 )
 
-table = dynamodb.Table(
-    "SensorData"
-)
-
-
+table = dynamodb.Table("SensorData")
 
 
 
 @app.route("/")
 def home():
 
-    return render_template(
-        "index.html"
-    )
+    return render_template("index.html")
 
 
 
-
-
-
+# Get complete DynamoDB data with pagination
 
 def get_all_data():
 
+    items = []
+
     response = table.scan()
 
-    items = response.get(
-        "Items",
-        []
+    items.extend(
+        response.get("Items", [])
     )
+
+
+    while "LastEvaluatedKey" in response:
+
+        response = table.scan(
+            ExclusiveStartKey=
+            response["LastEvaluatedKey"]
+        )
+
+        items.extend(
+            response.get("Items", [])
+        )
+
 
     return items
 
 
 
 
-
-
-
-# 1. Latest sensor monitoring API
+# Latest sensor monitoring API
 
 @app.route("/api/sensors")
 def sensors():
 
-
     items = get_all_data()
-
 
 
     items.sort(
@@ -71,17 +71,13 @@ def sensors():
 
 
     return jsonify(
-        items[:100]
+        items[:500]
     )
 
 
 
 
-
-
-
-
-# 2. Business alert API
+# Business alert API
 
 @app.route("/api/alerts")
 def alerts():
@@ -93,29 +89,19 @@ def alerts():
     alert_data=[]
 
 
-
     for item in items:
 
 
-        if item.get(
-            "anomaly",
-            False
-        ) in [True,"true"]:
+        if item.get("anomaly") in [
+            True,
+            "true"
+        ]:
 
 
-            severity="WARNING"
-
-
-
-            if item.get(
-                "type"
-            ) in [
-                "smoke",
-                "door"
-            ]:
-
-                severity="CRITICAL"
-
+            severity = item.get(
+                "severity",
+                "WARNING"
+            )
 
 
             alert_data.append({
@@ -145,71 +131,66 @@ def alerts():
     )
 
 
-
     return jsonify(
-        alert_data[:50]
+        alert_data[:100]
     )
 
 
 
 
 
-
-
-
-
-# 3. Dashboard KPI summary API
+# Dashboard KPI summary
 
 @app.route("/api/summary")
 def summary():
 
 
-    items=get_all_data()
+    items = get_all_data()
 
 
 
-    total=len(items)
+    total = len(items)
 
 
 
-    alerts=sum(
-
-        1 for x in items
-
-        if x.get("anomaly")
-        in [True,"true"]
-
-    )
-
-
-
-    critical=sum(
+    active_alerts = sum(
 
         1 for x in items
 
         if x.get("anomaly")
-        in [True,"true"]
-
-        and x.get("type")
         in [
-            "smoke",
-            "door"
+            True,
+            "true"
         ]
 
     )
 
 
 
-    power=[]
+    critical_alerts = sum(
+
+        1 for x in items
+
+        if x.get("severity")
+        ==
+        "CRITICAL"
+
+    )
+
+
+
+    power_values=[]
+
 
 
     for x in items:
+
 
         if x.get("type")=="power":
 
             try:
 
-                power.append(
+                power_values.append(
                     float(
                         x.get("value")
                     )
@@ -221,24 +202,34 @@ def summary():
 
 
 
-
     current_power = (
-        power[0]
-        if power
+
+        power_values[-1]
+
+        if power_values
+
         else 0
+
     )
 
 
 
     return jsonify({
 
-        "total_records":total,
+        "total_records":
+            total,
 
-        "active_alerts":alerts,
 
-        "critical_alerts":critical,
+        "active_alerts":
+            active_alerts,
 
-        "current_power":current_power
+
+        "critical_alerts":
+            critical_alerts,
+
+
+        "current_power":
+            current_power
 
     })
 
@@ -246,11 +237,7 @@ def summary():
 
 
 
-
-
-
-
-# 4. Sensor health API
+# Sensor status API
 
 @app.route("/api/status")
 def status():
@@ -273,19 +260,22 @@ def status():
 
         sensors[sid]={
 
-            "sensor_id":sid,
+            "sensor_id":
+                sid,
+
 
             "type":
                 item.get("type"),
 
+
             "last_seen":
                 item.get("timestamp"),
+
 
             "status":
                 "ONLINE"
 
         }
-
 
 
 
@@ -300,17 +290,13 @@ def status():
 
 
 
-
-
-
-# 5. Analytics API
+# Analytics API for charts
 
 @app.route("/api/analytics")
 def analytics():
 
 
     items=get_all_data()
-
 
 
     result={}
@@ -333,9 +319,7 @@ def analytics():
         for item in items:
 
 
-            if item.get(
-                "type"
-            )==sensor_type:
+            if item.get("type")==sensor_type:
 
 
                 try:
@@ -346,9 +330,11 @@ def analytics():
                         )
                     )
 
+
                 except:
 
                     pass
+
 
 
 
@@ -374,18 +360,12 @@ def analytics():
                 "minimum":
                     min(values)
 
-
             }
 
 
 
 
-    return jsonify(
-        result
-    )
-
-
-
+    return jsonify(result)
 
 
 
@@ -404,4 +384,3 @@ if __name__=="__main__":
         debug=False
 
     )
-
