@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <title>Fog Assisted Data Centre Monitoring</title>
+
+    <link rel="stylesheet" href="/static/style.css">
+
+</head>
+
+
+<body>
+
+
+<h1>🌫 Fog Assisted Data Centre Monitoring</h1>
+
+
+
+
+<!-- ================= KPI SUMMARY ================= -->
+
+<h2>📊 System Overview</h2>
+
+
+<div class="cards">
+
+
+<div class="card">
+<h3>Total Records</h3>
+<p id="totalRecords">0</p>
+</div>
+
+
+<div class="card alert">
+<h3>Active Alerts</h3>
+<p id="activeAlerts">0</p>
+</div>
+
+
+<div class="card alert">
+<h3>Critical Alerts</h3>
+<p id="criticalAlerts">0</p>
+</div>
+
+
+<div class="card">
+<h3>⚡ Current Power</h3>
+<p id="currentPower">0 W</p>
+</div>
+
+
+</div>
+
+
+
+
+
+
+
+<!-- ================= ALERT MANAGEMENT ================= -->
+
+
+<h2>🚨 Business Alert Management</h2>
+
+
+<table>
+
+
+<thead>
+
+<tr>
+
+<th>Sensor ID</th>
+
+<th>Type</th>
+
+<th>Value</th>
+
+<th>Severity</th>
+
+<th>Timestamp</th>
+
+
+</tr>
+
+
+</thead>
+
+
+<tbody id="alertTable">
+
+
+</tbody>
+
+
+</table>
+
+
+
+
+
+
+
+
+<!-- ================= LIVE SENSOR DATA ================= -->
+
+
+<h2>📡 Live Sensor Monitoring</h2>
+
+
+<table>
+
+
+<thead>
+
+
+<tr>
+
+<th>Sensor ID</th>
+
+<th>Type</th>
+
+<th>Value</th>
+
+<th>Anomaly</th>
+
+<th>Processed By</th>
+
+<th>Timestamp</th>
+
+
+</tr>
+
+
+</thead>
+
+
+<tbody id="sensorTable">
+
+
+</tbody>
+
+
+</table>
+
+
+
+
+
+
+
+
+<!-- ================= ANALYTICS ================= -->
+
+
+<h2>📈 Sensor Analytics</h2>
+
+
+
+<div class="chart-container">
+
+
+<h3>⚡ Power Consumption</h3>
+
+<canvas id="powerChart"></canvas>
+
+
+
+<h3>🌡 Temperature Monitoring</h3>
+
+<canvas id="temperatureChart"></canvas>
+
+
+
+<h3>💧 Humidity Monitoring</h3>
+
+<canvas id="humidityChart"></canvas>
+
+
+</div>
+
+
+
+
+
+
+
+
+<!-- Chart.js -->
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
+<!-- Dashboard Logic -->
+
+<script src="/static/script.js?v=final"></script>
+
+
+
+</body>
+
+
+</html>

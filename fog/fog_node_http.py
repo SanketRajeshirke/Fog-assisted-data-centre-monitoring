@@ -1,31 +1,27 @@
 import json
-import paho.mqtt.client as mqtt
-from aws.iot_client import connect_aws_iot, publish_message
+import boto3
 from datetime import datetime
+from flask import Flask, request, jsonify
 
 
-# -------------------------
-# THRESHOLDS
-# -------------------------
+app = Flask(__name__)
+
 
 TEMP_THRESHOLD = 50
 POWER_THRESHOLD = 3000
 
-
-# -------------------------
-# LOCAL MQTT CONFIG
-# -------------------------
-
-MQTT_BROKER = "localhost"
-MQTT_PORT = 1883
-MQTT_TOPIC = "sensors/data"
+buffer = []
 
 
-# -------------------------
-# AWS IoT CLIENT
-# -------------------------
+# AWS SQS
+sqs = boto3.client(
+    "sqs",
+    region_name="us-east-1"
+)
 
-iot_client = None
+
+QUEUE_URL = "https://sqs.us-east-1.amazonaws.com/348256052600/fog-sensor-queue"
+
 
 
 # -------------------------
@@ -49,6 +45,7 @@ def detect_anomaly(data):
     return False
 
 
+
 # -------------------------
 # FOG PROCESSING
 # -------------------------
@@ -57,9 +54,11 @@ def process_data(data):
 
     enriched = data.copy()
 
+
     enriched["processed_by"] = "fog_node"
 
     enriched["processed_time"] = datetime.utcnow().isoformat()
+
 
     anomaly = detect_anomaly(data)
 
@@ -78,44 +77,89 @@ def process_data(data):
     return enriched
 
 
+
 # -------------------------
-# SEND TO AWS IoT CORE
+# BATCHING
 # -------------------------
 
-def send_to_iot_core(data):
+def batch_data(data):
 
-    print("\nSending to AWS IoT Core:")
-
-    print(json.dumps(data, indent=2))
+    buffer.append(data)
 
 
-    publish_message(
-        iot_client,
-        data
+    if len(buffer) >= 5:
+
+        batch = buffer.copy()
+
+        buffer.clear()
+
+        return batch
+
+
+    return None
+
+
+
+# -------------------------
+# SEND TO CLOUD
+# -------------------------
+
+def send_to_cloud(batch):
+
+    print("\n☁ Sending batch to AWS SQS")
+
+
+    sqs.send_message(
+
+        QueueUrl=QUEUE_URL,
+
+        MessageBody=json.dumps(batch)
+
     )
 
 
+    print("✅ Batch sent successfully")
+
+
+
 # -------------------------
-# MQTT CALLBACK
+# SENSOR API
 # -------------------------
 
-def on_message(client, userdata, msg):
+@app.route("/sensor", methods=["POST"])
+def receive_sensor_data():
 
-    data = json.loads(
-        msg.payload.decode()
-    )
+    data = request.json
 
 
-    print("\nReceived sensor:")
+    print("\n📥 Received sensor:")
+
     print(data)
+
 
 
     processed = process_data(data)
 
 
-    send_to_iot_core(
-        processed
-    )
+
+    batch = batch_data(processed)
+
+
+
+    if batch:
+
+        send_to_cloud(batch)
+
+
+
+    return jsonify({
+
+        "status": "processed",
+
+        "anomaly": processed["anomaly"]
+
+    })
+
 
 
 # -------------------------
@@ -124,33 +168,13 @@ def on_message(client, userdata, msg):
 
 if __name__ == "__main__":
 
-
-    # Connect to AWS IoT Core once
-    iot_client = connect_aws_iot()
+    print("Fog node started. Waiting for sensor data...")
 
 
-    # Connect local MQTT broker
+    app.run(
 
-    client = mqtt.Client()
+        host="0.0.0.0",
 
+        port=5000
 
-    client.on_message = on_message
-
-
-    client.connect(
-        MQTT_BROKER,
-        MQTT_PORT
     )
-
-
-    client.subscribe(
-        MQTT_TOPIC
-    )
-
-
-    print(
-        "Fog node waiting for MQTT data..."
-    )
-
-
-    client.loop_forever()

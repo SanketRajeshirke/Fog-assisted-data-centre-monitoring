@@ -1,0 +1,3 @@
+aws/certificates/*.pem
+aws/certificates/*.crt
+aws/certificates/*.key
