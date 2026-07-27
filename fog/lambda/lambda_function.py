@@ -64,7 +64,6 @@ Recommended Action:
 
 Please inspect the data centre infrastructure immediately.
 
-
 """
 
 
@@ -80,8 +79,6 @@ Please inspect the data centre infrastructure immediately.
 
 
     print("SNS notification sent")
-
-
 
 
 
@@ -101,9 +98,7 @@ def classify_severity(item):
 
 
 
-    # --------------------------
-    # Fire detection
-    # --------------------------
+    # Smoke detection
 
     if sensor_type == "smoke" and value == "ALERT":
 
@@ -111,9 +106,7 @@ def classify_severity(item):
 
 
 
-    # --------------------------
-    # Security monitoring
-    # --------------------------
+    # Door security
 
     elif sensor_type == "door" and value == "OPEN":
 
@@ -121,9 +114,7 @@ def classify_severity(item):
 
 
 
-    # --------------------------
     # Temperature monitoring
-    # --------------------------
 
     elif sensor_type == "temperature":
 
@@ -142,10 +133,7 @@ def classify_severity(item):
 
 
 
-
-    # --------------------------
-    # Energy monitoring
-    # --------------------------
+    # Power monitoring
 
     elif sensor_type == "power":
 
@@ -164,7 +152,6 @@ def classify_severity(item):
 
 
 
-
 # ==========================
 # LAMBDA ENTRY POINT
 # ==========================
@@ -172,135 +159,103 @@ def classify_severity(item):
 def lambda_handler(event, context):
 
 
-    print("Received event:")
+    print("Received event from AWS IoT Core:")
 
-    print(event)
+    print(json.dumps(event))
 
 
 
-    processed = []
+    item = event
 
 
 
-    # Messages received from SQS
+    value = item["value"]
 
-    for record in event["Records"]:
 
 
+    # Convert float for DynamoDB
 
-        body = json.loads(record["body"])
+    if isinstance(value, float):
 
+        value = Decimal(str(value))
 
 
-        # Batch from fog node
 
-        for item in body:
+    # Business classification
 
+    severity = classify_severity(item)
 
 
-            value = item["value"]
 
+    enriched = {
 
 
-            # DynamoDB does not support float
+        "sensor_id":
+            item["sensor_id"],
 
-            if isinstance(value, float):
 
-                value = Decimal(str(value))
+        "type":
+            item["type"],
 
 
+        "value":
+            value,
 
 
-            # Determine business severity
+        "timestamp":
+            item["timestamp"],
 
-            severity = classify_severity(item)
 
+        "processed_by":
+            "lambda",
 
 
+        "anomaly":
+            item.get("anomaly", False),
 
-            enriched = {
 
+        "severity":
+            severity
 
-                "sensor_id":
-                    item["sensor_id"],
+    }
 
 
 
-                "type":
-                    item["type"],
+    print("Processed data:")
 
+    print(enriched)
 
 
-                "value":
-                    value,
 
+    # ==========================
+    # STORE IN DYNAMODB
+    # ==========================
 
+    table.put_item(
 
-                "timestamp":
-                    item["timestamp"],
+        Item=enriched
 
+    )
 
 
-                "processed_by":
-                    "lambda",
+    print("Stored in DynamoDB")
 
 
 
-                "anomaly":
-                    item.get("anomaly", False),
+    # ==========================
+    # CRITICAL ALERT
+    # ==========================
 
+    if severity == "CRITICAL":
 
 
-                "severity":
-                    severity
+        send_alert(
 
-            }
+            enriched,
 
+            severity
 
-
-
-            processed.append(enriched)
-
-
-
-            print("Processed:")
-
-            print(enriched)
-
-
-
-
-            # ==========================
-            # Store in DynamoDB
-            # ==========================
-
-            table.put_item(
-
-                Item=enriched
-
-            )
-
-
-
-
-
-            # ==========================
-            # Critical Business Alert
-            # ==========================
-
-            if severity == "CRITICAL":
-
-
-                send_alert(
-
-                    enriched,
-
-                    severity
-
-                )
-
-
-
+        )
 
 
 
@@ -312,16 +267,12 @@ def lambda_handler(event, context):
 
         "body": json.dumps({
 
-
             "message":
                 "Sensor data processed successfully",
 
 
-
             "processed_records":
-                len(processed)
-
-
+                1
 
         })
 
